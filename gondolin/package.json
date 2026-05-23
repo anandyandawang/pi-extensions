@@ -10,7 +10,7 @@
     "extensions": ["./extensions"]
   },
   "dependencies": {
-    "@earendil-works/gondolin": "^0.1.0",
-    "@earendil-works/pi-coding-agent": "^0.1.0"
+    "@earendil-works/gondolin": "^0.12.0",
+    "@earendil-works/pi-coding-agent": "^0.75.4"
   }
 }
