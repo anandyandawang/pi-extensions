@@ -1,0 +1,37 @@
+{
+  "arch": "aarch64",
+  "distro": "alpine",
+  "env": {
+    "JAVA_HOME": "/usr/lib/jvm/default-jvm",
+    "GRADLE_OPTS": "-Dorg.gradle.daemon=false"
+  },
+  "alpine": {
+    "version": "3.23.0",
+    "kernelPackage": "linux-virt",
+    "rootfsPackages": [
+      "linux-virt",
+      "rng-tools",
+      "bash",
+      "ca-certificates",
+      "curl",
+      "e2fsprogs",
+      "openssh",
+      "git",
+      "git-lfs",
+      "openjdk21",
+      "gradle",
+      "maven",
+      "fzf",
+      "jq",
+      "vim",
+      "nano",
+      "coreutils",
+      "findutils",
+      "grep",
+      "file"
+    ]
+  },
+  "runtimeDefaults": {
+    "rootfsMode": "cow"
+  }
+}

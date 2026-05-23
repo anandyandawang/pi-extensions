@@ -1,0 +1,16 @@
+{
+  "name": "gondolin",
+  "version": "0.1.0",
+  "description": "Pi extension: run pi tool calls inside a Gondolin micro-VM with JVM toolchain",
+  "keywords": ["pi-package", "pi-extension", "gondolin", "jvm", "sandbox"],
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "pi": {
+    "extensions": ["./extensions"]
+  },
+  "dependencies": {
+    "@earendil-works/gondolin": "^0.1.0",
+    "@earendil-works/pi-coding-agent": "^0.1.0"
+  }
+}

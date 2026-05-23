@@ -1,0 +1,25 @@
+{
+  "allowed": [
+    "github.com",
+    "api.github.com",
+    "raw.githubusercontent.com",
+    "release-assets.githubusercontent.com",
+    "github-registry-files.githubusercontent.com",
+    "maven.pkg.github.com",
+    "registry.npmjs.org",
+    "plugins.gradle.org",
+    "plugins-artifacts.gradle.org",
+    "services.gradle.org",
+    "repo.maven.apache.org",
+    "repo1.maven.org",
+    "dl.google.com"
+  ],
+  "githubTokenHosts": [
+    "api.github.com",
+    "github.com",
+    "raw.githubusercontent.com",
+    "release-assets.githubusercontent.com",
+    "github-registry-files.githubusercontent.com",
+    "maven.pkg.github.com"
+  ]
+}
