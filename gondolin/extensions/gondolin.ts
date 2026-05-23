@@ -124,6 +124,7 @@ function buildSecrets(
 async function configureGuestGit(
   vm: VM,
   ident: GitIdentity,
+  hasGithubToken: boolean,
 ): Promise<void> {
   // Host bind-mount preserves host uid on /workspace files; guest runs as
   // root. Without this, every git command in /workspace fails with
@@ -170,6 +171,26 @@ async function configureGuestGit(
       );
     }
   }
+  if (hasGithubToken) {
+    // Tell git to use $GITHUB_TOKEN for HTTPS auth against github.com.
+    // The token value visible inside the guest is the gondolin placeholder;
+    // gondolin's HTTP proxy swaps it for the real token on the wire for
+    // hosts listed in allowed-hosts.json -> githubTokenHosts.
+    const helper =
+      "!f() { echo username=x-access-token; echo password=$GITHUB_TOKEN; }; f";
+    const r = await vm.exec([
+      "/usr/bin/git",
+      "config",
+      "--global",
+      "credential.https://github.com.helper",
+      helper,
+    ]);
+    if (!r.ok) {
+      throw new Error(
+        `git config credential.helper failed (${r.exitCode}): ${r.stderr}`,
+      );
+    }
+  }
 }
 
 async function verifyAllowlist(vm: VM): Promise<void> {
@@ -196,9 +217,10 @@ async function verifyAllowlist(vm: VM): Promise<void> {
   }
 }
 
-// Host env keys that point at host paths or identities. Pi inherits these
-// from the user's shell and passes them through to BashOperations.exec; if
-// we don't strip them, guest bash sees HOME=/Users/... etc and breaks.
+// Host env keys that point at host paths/identities or carry real secrets.
+// Pi forwards its process env to BashOperations.exec; if we don't strip
+// these, guest bash sees HOME=/Users/... and the REAL GITHUB_TOKEN, which
+// would defeat gondolin's placeholder swap.
 const HOST_PATH_ENV_KEYS = new Set([
   "HOME",
   "USER",
@@ -222,11 +244,18 @@ const HOST_PATH_ENV_KEYS = new Set([
   "JAVA_HOME",
   "NODE_PATH",
   "npm_config_prefix",
+  // Real secrets — must come from gondolin's createHttpHooks placeholder
+  // map (guestSecretsEnv below), not from the host shell.
+  "GITHUB_TOKEN",
 ]);
 
-function sanitizeEnv(
-  env?: NodeJS.ProcessEnv,
-): Record<string, string> | undefined {
+// Populated by ensureVm() after createHttpHooks. Contains the gondolin
+// placeholder env (e.g. {GITHUB_TOKEN: "<opaque-placeholder>"}). Overlaid
+// onto every per-call bash env so guest scripts always see a usable
+// reference; gondolin swaps it on the wire for allowed destinations.
+let guestSecretsEnv: Record<string, string> = {};
+
+function sanitizeEnv(env?: NodeJS.ProcessEnv): Record<string, string> {
   const out: Record<string, string> = {};
   if (env) {
     for (const [k, v] of Object.entries(env)) {
@@ -243,6 +272,10 @@ function sanitizeEnv(
   out.SHELL = "/bin/bash";
   out.PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
   out.JAVA_HOME = "/usr/lib/jvm/default-jvm";
+  // Overlay placeholder secrets so guest scripts see a usable token value.
+  for (const [k, v] of Object.entries(guestSecretsEnv)) {
+    out[k] = v;
+  }
   return out;
 }
 
@@ -405,6 +438,10 @@ export default function (pi: ExtensionAPI) {
         allowedHosts: hostsConfig.allowed,
         secrets,
       });
+      // Cache for sanitizeEnv() so every per-call bash env carries the
+      // placeholder; otherwise real host GITHUB_TOKEN would slip through
+      // pi's env forwarding (stripped above) and there'd be no replacement.
+      guestSecretsEnv = secretsEnv;
 
       const created = await VM.create({
         sandbox: { imagePath: ASSETS_DIR },
@@ -418,7 +455,7 @@ export default function (pi: ExtensionAPI) {
       });
 
       try {
-        await configureGuestGit(created, gitIdent);
+        await configureGuestGit(created, gitIdent, !!process.env.GITHUB_TOKEN);
         await verifyAllowlist(created);
       } catch (err) {
         await created.close().catch(() => {});
