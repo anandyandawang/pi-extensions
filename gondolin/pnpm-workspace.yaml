@@ -1,0 +1,6 @@
+onlyBuiltDependencies:
+  - "@google/genai"
+  - cpu-features
+  - koffi
+  - protobufjs
+  - ssh2
