@@ -14,7 +14,8 @@
  */
 
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -50,13 +51,10 @@ const ALLOWED_HOSTS_PATH = path.join(ROOT, "allowed-hosts.json");
 
 // Pi's system prompt references pi-coding-agent's own docs/examples by
 // their HOST install path. Without a second mount the model gets
-// "path escapes workspace" for every doc lookup. Detect pi's package
-// root from process.argv[1] (pi's CLI entry script) and mount it at
-// /pi-runtime so the same host paths translate cleanly.
-function resolvePiRuntimeRoot(): string | undefined {
-  const entry = process.argv[1];
-  if (!entry) return undefined;
-  let dir = path.dirname(entry);
+// "path escapes workspace" for every doc lookup. Try several starting
+// points and walk up until we find pi-coding-agent's package.json.
+function findPiPackageRoot(start: string): string | undefined {
+  let dir = path.dirname(start);
   while (dir !== path.dirname(dir)) {
     const pkgPath = path.join(dir, "package.json");
     if (existsSync(pkgPath)) {
@@ -73,6 +71,46 @@ function resolvePiRuntimeRoot(): string | undefined {
     }
     dir = path.dirname(dir);
   }
+  return undefined;
+}
+
+function resolvePiRuntimeRoot(): string | undefined {
+  const seen = new Set<string>();
+  const tryStart = (p: string | undefined): string | undefined => {
+    if (!p || seen.has(p)) return undefined;
+    seen.add(p);
+    return findPiPackageRoot(p);
+  };
+
+  // 1. process.argv[1] = `pi` entry script. With npm-style installs this
+  //    is usually a symlink (~/.../bin/pi -> ../lib/node_modules/.../cli.js);
+  //    realpathSync follows it so the walk reaches the real package dir.
+  const argv1 = process.argv[1];
+  if (argv1) {
+    let real: string | undefined;
+    try {
+      real = realpathSync(argv1);
+    } catch {
+      /* ignore */
+    }
+    const root = tryStart(real) ?? tryStart(argv1);
+    if (root) return root;
+  }
+
+  // 2. Module resolver fallback. May resolve to OUR vendored copy under
+  //    gondolin/node_modules; only return it if its path looks plausible
+  //    (not inside our extension folder).
+  try {
+    const requireFromHere = createRequire(import.meta.url);
+    const resolved = requireFromHere.resolve(
+      "@earendil-works/pi-coding-agent",
+    );
+    const root = tryStart(resolved);
+    if (root && !root.startsWith(ROOT)) return root;
+  } catch {
+    /* ignore */
+  }
+
   return undefined;
 }
 
