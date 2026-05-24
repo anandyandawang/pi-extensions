@@ -64,7 +64,22 @@ function tryTranslate(
   return path.posix.join(guestRoot, posixRel);
 }
 
+// True when `p` already looks like a guest-side absolute path under one of
+// our known mount roots. Pi's system prompt advertises cwd as /workspace,
+// so the model often sends `/workspace/...` paths directly to the read
+// tool; we should accept those verbatim instead of trying to interpret
+// them as host paths and throwing "path escapes workspace".
+function isAlreadyGuestPath(p: string): boolean {
+  if (!p.startsWith("/")) return false;
+  if (p === GUEST_WORKSPACE || p.startsWith(GUEST_WORKSPACE + "/")) return true;
+  for (const m of extraMounts) {
+    if (p === m.guestPath || p.startsWith(m.guestPath + "/")) return true;
+  }
+  return false;
+}
+
 export function toGuestPath(localCwd: string, localPath: string): string {
+  if (isAlreadyGuestPath(localPath)) return localPath;
   const ws = tryTranslate(localCwd, GUEST_WORKSPACE, localPath);
   if (ws !== undefined) return ws;
   for (const m of extraMounts) {
