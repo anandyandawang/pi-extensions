@@ -73,11 +73,10 @@ export function sanitizeEnv(env?: NodeJS.ProcessEnv): Record<string, string> {
   }
   // Force guest-valid defaults regardless of merge semantics with the
   // baked-in VM env. Aligns with the Alpine + openjdk21 image.
-  // gondolin's guest init mounts /root as tmpfs (~half VM RAM), so tools
-  // like gradle/maven/npm that cache GBs into $HOME overflow fast.
-  // /home is left on the rootfs ext4; /home/agent is created at image
-  // build time (see build-config.json postBuild.commands).
-  out.HOME = "/home/agent";
+  // HOME intentionally NOT forced. gondolin's guest init runs
+  // `export HOME=/root` before sandboxd, so sandboxd's process env (and
+  // any bash spawned by vm.exec) inherits HOME=/root for free. Forcing
+  // it here was redundant.
   out.USER = "root";
   out.LOGNAME = "root";
   out.SHELL = "/bin/bash";
