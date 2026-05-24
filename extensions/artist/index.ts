@@ -1,7 +1,9 @@
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import * as bm from "beautiful-mermaid";
-import { truncateToWidth } from "@earendil-works/pi-tui";
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+
+const ANSI_RE = /\x1b\[[0-9;]*m/g;
 
 /**
  * Artist Extension
@@ -54,8 +56,17 @@ Whenever the user requests a non-trivial change (affecting multiple files or com
               useAscii: false,
             });
 
-            const lines = asciiArt.split("\n");
-            return lines.map((line) => truncateToWidth(line, width));
+            // beautiful-mermaid output is plain text but strip any stray
+            // ANSI codes defensively -- they reset bg color mid-line and
+            // would break the steer-message background. Then right-pad
+            // each line to `width` cells so the steer bg fills the full
+            // row (pi paints bg per visible char, not to row edge).
+            const lines = asciiArt.split("\n").map((raw) => raw.replace(ANSI_RE, ""));
+            return lines.map((line) => {
+              const truncated = truncateToWidth(line, width);
+              const pad = Math.max(0, width - visibleWidth(truncated));
+              return truncated + " ".repeat(pad);
+            });
           } catch (error: any) {
             return [`Failed to render diagram: ${error.message}`];
           }
