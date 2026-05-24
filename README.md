@@ -9,6 +9,8 @@ git clone git@github.com:anandyandawang/pi-stuff
 pi install pi-stuff
 ```
 
+*Note: Some extensions (like gondolin) may require additional one-time setup steps. Check their respective directories.*
+
 ## Stuff
 
 - **gondolin**: Sandbox tool calls in a micro-VM (JVM toolchain).

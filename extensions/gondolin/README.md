@@ -4,7 +4,12 @@ Sandbox tool calls in a micro-VM with OpenJDK 21.
 
 ## Install
 
-See [root README](../../README.md).
+1. Standard pi install (see [root README](../../README.md)).
+2. **Build the VM image** (required once):
+   ```bash
+   npx gondolin build --config build-config.json --output ./assets
+   ```
+
 
 ## Quick Info
 
