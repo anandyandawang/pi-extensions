@@ -24,4 +24,4 @@ pi install "$PWD"           # user-global  (~/.pi/agent/settings.json)
 pi install "$PWD" -l        # project-local (.pi/settings.json in current cwd)
 ```
 
-Ad-hoc (no install, one-shot): `pi -e ./extensions/<file>.ts`.
+Ad-hoc (no install, one-shot): `pi -e ./<file>.ts`.
