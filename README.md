@@ -11,10 +11,11 @@ pnpm install        # installs deps for every extension in one shot
 pi install "$PWD"   # or `pi install pi-stuff` from the parent dir
 ```
 
-Build the **gondolin** VM image:
+Build the **gondolin** VM image (run from the repo root):
 ```bash
-cd extensions/gondolin
-npx gondolin build --config build-config.json --output ./assets
+npx gondolin build \
+  --config extensions/gondolin/build-config.json \
+  --output extensions/gondolin/assets
 ```
 
 ## Stuff
