@@ -6,7 +6,6 @@ Sandbox tool calls in a micro-VM with OpenJDK 21.
 
 See [root README](../../README.md).
 
-
 ## Quick Info
 
 - **Env**: Alpine + JVM toolchain.
