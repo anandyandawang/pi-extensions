@@ -5,8 +5,10 @@ Collection of stuff for pi.
 ## Setup
 
 ```bash
-git clone git@github.com:anandyandawang/pi-stuff
-pi install pi-stuff
+git clone https://github.com/anandyandawang/pi-stuff.git
+cd pi-stuff
+pnpm install
+pi install .
 ```
 
 Build the **gondolin** VM image:
