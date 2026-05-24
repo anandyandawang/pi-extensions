@@ -8,7 +8,7 @@ Collection of stuff for pi.
 git clone https://github.com/anandyandawang/pi-stuff.git
 cd pi-stuff
 pnpm install
-pi install "$PWD"
+pi install .
 ```
 
 Build the **gondolin** VM image:
