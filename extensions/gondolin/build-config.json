@@ -2,9 +2,11 @@
   "arch": "aarch64",
   "distro": "alpine",
   "env": {
-    "HOME": "/home/agent",
     "JAVA_HOME": "/usr/lib/jvm/java-21-openjdk",
     "GRADLE_OPTS": "-Dorg.gradle.daemon=false"
+  },
+  "init": {
+    "rootfsInitExtra": "./rootfs-init-extra.sh"
   },
   "alpine": {
     "version": "3.23.0",
@@ -34,11 +36,6 @@
       "findutils",
       "grep",
       "file"
-    ]
-  },
-  "postBuild": {
-    "commands": [
-      "mkdir -p /home/agent && chmod 755 /home/agent"
     ]
   },
   "rootfs": {
