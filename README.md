@@ -17,6 +17,12 @@ cd extensions/gondolin
 npx gondolin build --config build-config.json --output ./assets
 ```
 
+Installation complete. Now go to your project and run `pi`:
+```bash
+cd ../.. # back to pi-stuff root, or your project of choice
+pi
+```
+
 ## Stuff
 
 ### Extensions
