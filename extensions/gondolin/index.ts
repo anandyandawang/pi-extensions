@@ -43,6 +43,7 @@ import {
 
 const GUEST_WORKSPACE = "/workspace";
 const GUEST_PI_RUNTIME = "/pi-runtime";
+const GUEST_PI_INSTALLED_PREFIX = "/pi-installed";
 
 // Package root: the .ts file lives at the package root since the
 // flatten refactor (no nested extensions/ subdir). assets/ and
@@ -116,7 +117,142 @@ function resolvePiRuntimeRoot(): string | undefined {
   return undefined;
 }
 
-const PI_ROOT = resolvePiRuntimeRoot();
+// Extra host directories to expose inside the guest. Populated once at
+// session_start before VM.create. Each entry becomes (a) a Readonly VFS
+// mount at `guestPath` and (b) a symlink in the guest at `hostPath`
+// pointing to that mount, so both tool-path translation and bash commands
+// that use the host path resolve.
+interface ExtraMount {
+  hostPath: string;
+  guestPath: string;
+  label: string;
+}
+let extraMounts: ExtraMount[] = [];
+
+interface LoadedSettings {
+  baseDir: string;
+  raw: unknown;
+}
+
+// Pi resolves relative paths in settings files against the settings file's
+// own directory: ~/.pi/agent/settings.json -> baseDir is ~/.pi/agent.
+function loadPiSettingsFiles(localCwd: string): LoadedSettings[] {
+  const candidates: Array<{ baseDir: string; file: string }> = [];
+  if (process.env.HOME) {
+    const baseDir = path.join(process.env.HOME, ".pi", "agent");
+    candidates.push({ baseDir, file: path.join(baseDir, "settings.json") });
+  }
+  {
+    const baseDir = path.join(localCwd, ".pi");
+    candidates.push({ baseDir, file: path.join(baseDir, "settings.json") });
+  }
+  const out: LoadedSettings[] = [];
+  for (const c of candidates) {
+    if (!existsSync(c.file)) continue;
+    try {
+      out.push({ baseDir: c.baseDir, raw: JSON.parse(readFileSync(c.file, "utf8")) });
+    } catch {
+      /* ignore malformed settings */
+    }
+  }
+  return out;
+}
+
+// Strings that look like remote sources (npm:..., git:..., https://..., etc)
+// must NOT be treated as filesystem paths.
+function isLocalPathLike(value: string): boolean {
+  if (!value) return false;
+  if (value.startsWith("npm:")) return false;
+  if (value.startsWith("git:")) return false;
+  if (value.startsWith("git@")) return false;
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(value)) return false;
+  return true;
+}
+
+// Pi settings record local-path packages under `extensions`, `skills`,
+// `prompts`, `themes` (string[] of paths) and `packages` (strings or
+// objects). Resolve relative paths against the settings file's dir, expand
+// leading `~`, and emit every existing absolute path.
+function collectInstalledLocalPaths(localCwd: string): string[] {
+  const stringArrayKeys = ["extensions", "skills", "prompts", "themes"];
+  const out = new Set<string>();
+  const tryAdd = (candidate: unknown, baseDir: string) => {
+    if (typeof candidate !== "string") return;
+    if (!isLocalPathLike(candidate)) return;
+    let resolved = candidate;
+    if (resolved.startsWith("~") && process.env.HOME) {
+      resolved = path.join(process.env.HOME, resolved.slice(1));
+    }
+    if (!path.isAbsolute(resolved)) {
+      resolved = path.resolve(baseDir, resolved);
+    }
+    if (!existsSync(resolved)) return;
+    let real = resolved;
+    try {
+      real = realpathSync(resolved);
+    } catch {
+      /* ignore */
+    }
+    out.add(real);
+  };
+  for (const { baseDir, raw } of loadPiSettingsFiles(localCwd)) {
+    if (!raw || typeof raw !== "object") continue;
+    const settings = raw as Record<string, unknown>;
+    for (const key of stringArrayKeys) {
+      const arr = settings[key];
+      if (Array.isArray(arr)) for (const v of arr) tryAdd(v, baseDir);
+    }
+    const pkgs = settings.packages;
+    if (Array.isArray(pkgs)) {
+      for (const p of pkgs) {
+        if (typeof p === "string") tryAdd(p, baseDir);
+        else if (p && typeof p === "object") {
+          const obj = p as Record<string, unknown>;
+          tryAdd(obj.source ?? obj.path ?? obj.location, baseDir);
+        }
+      }
+    }
+  }
+  return [...out];
+}
+
+function buildExtraMounts(localCwd: string): ExtraMount[] {
+  const mounts: ExtraMount[] = [];
+  const seen = new Set<string>();
+  let localCwdReal = localCwd;
+  try {
+    localCwdReal = realpathSync(localCwd);
+  } catch {
+    /* ignore */
+  }
+
+  const add = (
+    hostPath: string,
+    guestPath: string,
+    label: string,
+  ): void => {
+    let real = hostPath;
+    try {
+      real = realpathSync(hostPath);
+    } catch {
+      /* ignore */
+    }
+    if (real === localCwdReal) return; // already mounted as /workspace
+    if (seen.has(real)) return;
+    seen.add(real);
+    mounts.push({ hostPath: real, guestPath, label });
+  };
+
+  const piRoot = resolvePiRuntimeRoot();
+  if (piRoot) add(piRoot, GUEST_PI_RUNTIME, "pi-coding-agent");
+
+  let i = 0;
+  for (const p of collectInstalledLocalPaths(localCwd)) {
+    add(p, `${GUEST_PI_INSTALLED_PREFIX}/${i++}`, path.basename(p));
+  }
+
+  return mounts;
+}
 
 interface AllowedHostsConfig {
   allowed: string[];
@@ -147,9 +283,9 @@ function tryTranslate(
 function toGuestPath(localCwd: string, localPath: string): string {
   const ws = tryTranslate(localCwd, GUEST_WORKSPACE, localPath);
   if (ws !== undefined) return ws;
-  if (PI_ROOT) {
-    const pi = tryTranslate(PI_ROOT, GUEST_PI_RUNTIME, localPath);
-    if (pi !== undefined) return pi;
+  for (const m of extraMounts) {
+    const t = tryTranslate(m.hostPath, m.guestPath, localPath);
+    if (t !== undefined) return t;
   }
   throw new Error(`path escapes workspace: ${localPath}`);
 }
@@ -307,18 +443,19 @@ async function configureGuestGit(
 // path, so the model often does `ls /Users/.../pi-coding-agent/docs` and
 // hits ENOENT. Symlink the host path to /pi-runtime inside the guest so
 // both shell access and tool access resolve.
-async function aliasPiRuntimePath(vm: VM): Promise<void> {
-  if (!PI_ROOT) return;
-  const parent = path.dirname(PI_ROOT);
-  const r = await vm.exec([
-    "/bin/sh",
-    "-lc",
-    `mkdir -p ${shQuote(parent)} && ln -sfn ${shQuote(GUEST_PI_RUNTIME)} ${shQuote(PI_ROOT)}`,
-  ]);
-  if (!r.ok) {
-    throw new Error(
-      `alias pi runtime symlink failed (${r.exitCode}): ${r.stderr}`,
-    );
+async function aliasHostPaths(vm: VM): Promise<void> {
+  for (const m of extraMounts) {
+    const parent = path.dirname(m.hostPath);
+    const r = await vm.exec([
+      "/bin/sh",
+      "-lc",
+      `mkdir -p ${shQuote(parent)} && ln -sfn ${shQuote(m.guestPath)} ${shQuote(m.hostPath)}`,
+    ]);
+    if (!r.ok) {
+      throw new Error(
+        `alias ${m.label} symlink failed (${r.exitCode}): ${r.stderr}`,
+      );
+    }
   }
 }
 
@@ -572,30 +709,30 @@ export default function (pi: ExtensionAPI) {
       // pi's env forwarding (stripped above) and there'd be no replacement.
       guestSecretsEnv = secretsEnv;
 
+      // Resolve every host dir we want exposed inside the guest:
+      // pi-coding-agent's install dir + every local-path package pi
+      // tracks in settings.json. Each gets a read-only VFS mount and a
+      // symlink at the host path inside the guest.
+      extraMounts = buildExtraMounts(localCwd);
+      const vfsMounts: Record<string, RealFSProvider | ReadonlyProvider> = {
+        [GUEST_WORKSPACE]: new RealFSProvider(localCwd),
+      };
+      for (const m of extraMounts) {
+        vfsMounts[m.guestPath] = new ReadonlyProvider(
+          new RealFSProvider(m.hostPath),
+        );
+      }
+
       const created = await VM.create({
         sandbox: { imagePath: ASSETS_DIR },
         httpHooks,
         env: { ...hostEnv, ...secretsEnv },
-        vfs: {
-          mounts: {
-            [GUEST_WORKSPACE]: new RealFSProvider(localCwd),
-            // /pi-runtime is wrapped in ReadonlyProvider so the guest
-            // can read pi's docs/examples but can't overwrite pi's
-            // install dir on the host.
-            ...(PI_ROOT
-              ? {
-                  [GUEST_PI_RUNTIME]: new ReadonlyProvider(
-                    new RealFSProvider(PI_ROOT),
-                  ),
-                }
-              : {}),
-          },
-        },
+        vfs: { mounts: vfsMounts },
       });
 
       try {
         await configureGuestGit(created, gitIdent, !!process.env.GITHUB_TOKEN);
-        await aliasPiRuntimePath(created);
+        await aliasHostPaths(created);
         await verifyAllowlist(created);
       } catch (err) {
         await created.close().catch(() => {});
