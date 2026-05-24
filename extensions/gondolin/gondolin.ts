@@ -44,8 +44,10 @@ import {
 const GUEST_WORKSPACE = "/workspace";
 const GUEST_PI_RUNTIME = "/pi-runtime";
 
-const EXT_DIR = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(EXT_DIR, "..");
+// Package root: the .ts file lives at the package root since the
+// flatten refactor (no nested extensions/ subdir). assets/ and
+// allowed-hosts.json are siblings of this file.
+const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const ASSETS_DIR = path.join(ROOT, "assets");
 const ALLOWED_HOSTS_PATH = path.join(ROOT, "allowed-hosts.json");
 

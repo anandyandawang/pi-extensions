@@ -36,7 +36,7 @@ cd ~/my-project     # this dir becomes /workspace inside the VM
 pi                  # extension auto-loads via pi settings
 ```
 
-One-shot (no install, from this folder): `pi -e ./extensions/gondolin.ts`.
+One-shot (no install, from this folder): `pi -e ./gondolin.ts`.
 
 Host env vars consumed (all optional):
 
@@ -54,7 +54,7 @@ gitconfig are read at session start and applied inside the guest via
 
 | File | Purpose |
 |---|---|
-| `extensions/gondolin.ts` | The extension pi loads |
+| `gondolin.ts` | The extension pi loads |
 | `build-config.json` | Input for `gondolin build` |
 | `allowed-hosts.json` | Runtime network allowlist + GitHub-token destination list |
 | `assets/` | Build output (gitignored) — VM kernel + rootfs |
