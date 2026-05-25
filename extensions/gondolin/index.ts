@@ -110,15 +110,15 @@ export default function (pi: ExtensionAPI) {
         );
       }
 
-      // 4. Boot the VM. `rootfs.size` ensures the writable root disk is at
-      //    least 4 GB at runtime (gondolin extends the ext4 + runs
-      //    resize2fs in guest) regardless of what's baked into the image.
+      // 4. Boot the VM. `memory: "4G"` bumps from gondolin's "1G" default;
+      //    tmpfs mounts (incl. /root used as $HOME) default to half-RAM,
+      //    so this gives gradle/maven caches room to breathe.
       const created = await VM.create({
         sandbox: { imagePath: ASSETS_DIR },
         httpHooks,
         env: { ...hostEnv, ...secretsEnv },
         vfs: { mounts: vfsMounts },
-        rootfs: { size: "4G" },
+        memory: "4G",
       });
 
       // 5. Guest setup steps (one capability per line). Each is idempotent
