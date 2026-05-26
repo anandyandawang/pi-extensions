@@ -16,7 +16,9 @@ export default function (pi: ExtensionAPI) {
 Whenever the user requests a non-trivial change (affecting multiple files or complex logic), you MUST use the **Visual Planning Process** defined in the 'visual-planning' skill. 
 1. Research first (read/ls/grep).
 2. Break the plan into sequential 'Visual Chunks'.
-3. Use \`draw_visual_plan\` to present and approve each chunk one-by-one before writing a single line of code.
+3. Use \`draw_visual_plan\` to present each chunk one-by-one with a simple explanation. 
+4. **Never** show raw Mermaid code in chat (let the tool render it).
+5. Stop and ask for approval after each chunk before proceeding.
 `;
     return {
       systemPrompt: event.systemPrompt + "\n" + planningGuideline,

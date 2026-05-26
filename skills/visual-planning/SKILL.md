@@ -22,8 +22,9 @@ Break the plan into a sequence of "Visual Chunks". A chunk is a logical group of
 
 ### 3. Visual Iteration (One by One)
 For each Visual Chunk:
-- Use the `draw_visual_plan` tool to create a a a simple Unicode diagram.
-- Provide a brief explanation of *why* this change is being made and how it fits.
+- Use the `draw_visual_plan` tool to create a simple Unicode diagram.
+- **IMPORTANT:** Do NOT show the raw Mermaid code in the chat. The tool handles the rendering.
+- Provide a brief, simple explanation of *why* this change is being made and how it fits.
 - **Stop and Wait.** Ask the user for feedback: "Does this look right? Is it too complex?"
 - Iterate on the diagram until the user says "Grug likes this".
 
