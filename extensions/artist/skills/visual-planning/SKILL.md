@@ -1,6 +1,6 @@
 ---
 name: visual-planning
-description: A rigorous process for planning non-trivial changes visually using Unicode diagrams.
+description: Plan non-trivial changes visually with Mermaid diagrams rendered as ASCII art.
 ---
 
 # Visual Planning Process
@@ -22,7 +22,7 @@ Break the plan into a sequence of "Visual Chunks". A chunk is a logical group of
 
 ### 3. Visual Iteration (One by One)
 For each Visual Chunk:
-- Use the `draw_visual_plan` tool to create a simple Unicode diagram.
+- Use the `draw_visual_plan` tool to create a diagram (write Mermaid, the tool renders it).
 - **IMPORTANT:** Do NOT show the raw Mermaid code in the chat. The tool handles the rendering.
 - Provide a brief, simple explanation of *why* this change is being made and how it fits.
 - **Stop and Wait.** Ask the user for feedback: "Does this look right? Is it too complex?"
@@ -32,6 +32,7 @@ For each Visual Chunk:
 Once all chunks are visually approved, summarize the full sequence and ask for a final "go" before writing any code.
 
 ## Grug's Drawing Rules
-- Use ┌ ┐ └ ┘ ─ │ ├ ┤ ┬ ┴ ┼ and arrows (→, ↓).
-- No "over-engineering" the ASCII art. If it takes too long to draw, it's too complex.
+- Write **Mermaid syntax** — the `draw_visual_plan` tool renders it to Unicode art automatically.
+- No raw box-drawing characters (┌ ┐ └ ┘). Let the tool do the rendering.
+- Keep diagrams simple. If Mermaid too complex, idea too complex.
 - Focus on the *flow of data* and *ownership of behavior*.

@@ -1,4 +1,7 @@
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { readFile } from "node:fs/promises";
 import { Type } from "typebox";
 import * as bm from "beautiful-mermaid";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
@@ -11,18 +14,27 @@ const ANSI_RE = /\x1b\[[0-9;]*m/g;
  * Uses beautiful-mermaid to turn Mermaid diagrams into ASCII art.
  */
 export default function (pi: ExtensionAPI) {
-  pi.on("before_agent_start", async (event, ctx) => {
-    const planningGuideline = `
-Whenever the user requests a non-trivial change (affecting multiple files or complex logic), you MUST use the **Visual Planning Process** defined in the 'visual-planning' skill. 
-1. Research first (read/ls/grep).
-2. Break the plan into sequential 'Visual Chunks'.
-3. Use \`draw_visual_plan\` to present each chunk one-by-one with a simple explanation. 
-4. **Never** show raw Mermaid code in chat (let the tool render it).
-5. Stop and ask for approval after each chunk before proceeding.
-`;
+  // Lightweight pointer: tell the agent visual planning exists, don't load full methodology.
+  pi.on("before_agent_start", async (event, _ctx) => {
     return {
-      systemPrompt: event.systemPrompt + "\n" + planningGuideline,
+      systemPrompt: event.systemPrompt + "\nFor non-trivial changes, use the /visual-planning command to start a visual planning session.",
     };
+  });
+
+  // When invoked, load the co-located SKILL.md and inject it as a steer message.
+  pi.registerCommand("visual-planning", {
+    description: "Start a visual planning session",
+    handler: async (_args, ctx) => {
+      const skillPath = path.resolve(fileURLToPath(import.meta.url), "../skills/visual-planning/SKILL.md");
+      const raw = await readFile(skillPath, "utf-8");
+      // Strip YAML frontmatter
+      const body = raw.replace(/^---[\s\S]*?---\n/, "");
+      await pi.sendUserMessage(
+        `I am starting a visual planning session. Here are the guidelines:\n\n${body}`,
+        { deliverAs: "steer" }
+      );
+      ctx.ui.notify("Visual planning mode engaged! 🎨", "info");
+    },
   });
 
   pi.registerTool({
@@ -78,14 +90,5 @@ Whenever the user requests a non-trivial change (affecting multiple files or com
     },
   });
 
-  pi.registerCommand("artist-plan", {
-    description: "Start a visual planning session",
-    handler: async (_args, ctx) => {
-      await pi.sendUserMessage(
-        "I want to plan a feature visually. Please start by describing the goal and then use the `draw_visual_plan` tool. Use Mermaid syntax for the diagrams. The extension will convert them to ASCII art for Grug. Keep them simple and clear!",
-        { deliverAs: "steer" }
-      );
-      ctx.ui.notify("Visual planning mode engaged! 🎨 Artist ready for Mermaid!", "info");
-    },
-  });
+
 }
