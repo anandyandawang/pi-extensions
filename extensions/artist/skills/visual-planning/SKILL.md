@@ -41,6 +41,7 @@ Before final confirmation, draw one more diagram — but this one is **about tes
   - 📦 Test cases grouped by scenario (happy path, error path, edge case)
   - 🧪 Test type: unit / integration / e2e
 - Mark each test group with the scenario it covers (e.g., "valid input", "empty input", "network failure").
+- **Create or modify passing integration tests that flow through all the major changes that have been made.** Integration tests are the sweet spot — high enough to test correctness, low enough to debug easily.
 - Ask the user: "Do these tests cover the right things? Too many? Too few?"
 - Iterate until the user says the test plan is solid.
 
@@ -73,3 +74,4 @@ Grug knows the change is finished when all three things are true:
 1. **Plan matched.** Every chunk from the visual plan is implemented. Nothing extra snuck in, nothing important left out.
 2. **It compiles.** The application builds without errors. No red squiggles, no "cannot find module."
 3. **Tests pass.** All existing tests still green. New tests (from the testing visual plan) are written and passing.
+4. **Integration tests flow.** There are passing integration tests (created or modified) that flow through all the major changes that have been made.
