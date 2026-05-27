@@ -11,8 +11,10 @@ Use this skill whenever the user asks for a non-trivial change (e.g., affecting 
 
 ### 1. Discovery Phase (Research)
 Do not start drawing yet. First, understand the land:
+- Ask clarifying questions to align on what the implementation should look like. Planning is a means of getting alignment — make sure you and the user are thinking about the same thing before you start drawing.
 - Use `ls` and `read` to map out all affected files.
 - Use `grep` to find all call sites of modified functions.
+- Identify existing patterns in the codebase. When implementing, follow these patterns where possible to keep things consistent.
 - Identify the "cut-points" (narrow interfaces) and the "locality of behavior".
 - Create a mental (or scratchpad) list of every change needed.
 
