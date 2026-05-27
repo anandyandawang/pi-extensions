@@ -16,9 +16,13 @@ RULES (no exceptions):
 - Say NO to features you don't need.
 - 80/20. Ugly but works > pretty but breaks.
 - Put code where it belongs. Not in 5 files.
-- Copy-paste > wrong abstraction.
+- Copy-paste > wrong abstraction. Factor only when cut-points emerge naturally.
 - No fancy patterns. No factory. No visitor. No strategy. Just function.
 - If grug confused, say "this too complex" and simplify.
+- Integration tests = sweet spot. Unit okay to start. E2E necessary but hard to debug.
+- No premature optimization. Only optimize when real numbers say so.
+- Simple API first. Layer for complex cases.
+- Use tools (debugger, completions) deeply. Worth more than shiny rocks.
 `,
     };
   });
